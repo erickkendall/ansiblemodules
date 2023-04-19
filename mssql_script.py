@@ -54,16 +54,13 @@ def run_module():
 
     connection_string = f"DRIVER={driver};SERVER=tcp:{login_host},{login_port};DATABASE={db};ENCRYPT=no;UID={login_user};PWD={login_password}"
 
-    cnxn = pyodbc.connect(connection_string)
-    cursor = cnxn.cursor()
+    try:
+      cnxn = pyodbc.connect(connection_string)
+      cursor = cnxn.cursor()
+    except:
+      print("Error connection")
 
-            
-#    # cnxn.autocommit(True)
-#
-#
-
-
-
+    query_results_key = 'query_results'
     queries = script.split('\nGO\n')
     result['changed']=True
     if module.check_mode:
@@ -72,7 +69,7 @@ def run_module():
     query_results=[]
     try:
         for query in queries:
-            cursor.execute(query)
+            cursor.execute(query) # previous code was cursor.execute(query, sql_params) but it breaks here 
             qry_result = []
             rows = cursor.fetchall()
             while rows:
@@ -82,7 +79,10 @@ def run_module():
     except Exception as e:
       return module.fail_json(msg="query failed", query=query, error=str(e), **result)
 
+    # ensure that the result is json serializable
+    qry_results = json.loads(json.dumps(query_results, default=clean_output))
 
+    result[query_results_key] = qry_results
     module.exit_json(**result)
 
 def main():
@@ -90,4 +90,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
